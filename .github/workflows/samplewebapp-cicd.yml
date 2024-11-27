@@ -1,0 +1,63 @@
+name: SampleWebApp CICD
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+
+#env:
+#  DOCKER_REGISTRY_URL: eastcanadadevtestacr.azurecr.io
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Azure Container Registry Login
+        uses: Azure/docker-login@v1
+        with:
+          # Container registry server url
+          login-server: ${{ secrets.ACR_URL }}
+          # Container registry username
+          username: ${{ secrets.ACR_USERNAME }}
+          # Container registry password
+          password: ${{ secrets.ACR_PASSWORD }}
+
+      - name: Build and Push the Docker image
+        run: |
+          docker build ./SampleWebApplication -t ${{ secrets.ACR_URL }}/samplewebapp:${{ github.run_id }}
+          docker push ${{ secrets.ACR_URL }}/samplewebapp:${{ github.run_id }}
+
+      - name: Package ARM Template and Shared Variables File
+        uses: actions/upload-artifact@v2
+        with: 
+          name: arm-templates
+          path: ${{ github.workspace }}/SampleWebApplication/azuredeploy.json
+          retention-days: 5
+
+  dev:
+    needs: build
+    uses: ./.github/workflows/reusable-web-app-container-deploy.yml
+    with:
+      ENVIRONMENT_PREFIX: dev
+      SERVER_FARM_RESOURCE_GROUP_NAME: DEV-ACRCD-RG #insert the name of your own RG here
+      WEBAPP_LOCATION: canadacentral #insert your desired location here
+      WEBAPP_SKU: Basic
+      WEBAPP_SKU_CODE: B1
+      ENVIRONMENT: development
+    secrets: inherit
+
+  prd:
+    needs: dev
+    uses: ./.github/workflows/reusable-web-app-container-deploy.yml
+    with:
+      ENVIRONMENT_PREFIX: prd
+      SERVER_FARM_RESOURCE_GROUP_NAME: PRD-ACRCD-RG #insert the name of your own RG here
+      WEBAPP_LOCATION: canadacentral #insert your desired location here
+      WEBAPP_SKU: Basic
+      WEBAPP_SKU_CODE: B1
+      ENVIRONMENT: production
+    secrets: inherit

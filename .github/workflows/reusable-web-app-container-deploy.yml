@@ -1,0 +1,63 @@
+name: Web App for Containers Deployment
+
+on:
+  workflow_call:
+    inputs:
+      ENVIRONMENT_PREFIX:
+        required: true
+        type: string
+      SERVER_FARM_RESOURCE_GROUP_NAME:
+        required: true
+        type: string
+      WEBAPP_LOCATION:
+        required: true
+        type: string
+      WEBAPP_SKU:
+        required: true
+        type: string
+      WEBAPP_SKU_CODE:
+        required: true
+        type: string
+      ENVIRONMENT:
+        required: true
+        type: string
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.ENVIRONMENT}}
+
+    steps:
+      - name: Download ARM Templates
+        uses: actions/download-artifact@v3
+        with:
+          name: arm-templates
+
+      - name: "Login via Azure CLI"
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Deploy ARM Template
+        uses: azure/arm-deploy@v1
+        with:
+          subscriptionId: ${{ secrets.SUBSCRIPTION_ID }}
+          resourceGroupName: ${{ inputs.SERVER_FARM_RESOURCE_GROUP_NAME }}
+          deploymentMode: Incremental
+          template: azuredeploy.json
+          parameters: > 
+            subscriptionId="${{ secrets.SUBSCRIPTION_ID }}"
+            name="${{ inputs.ENVIRONMENT_PREFIX }}-devops-samplewebapp"
+            location="${{ inputs.WEBAPP_LOCATION }}"
+            hostingPlanName="${{ inputs.ENVIRONMENT_PREFIX }}-asp"
+            serverFarmResourceGroup="${{ inputs.SERVER_FARM_RESOURCE_GROUP_NAME }}"
+            sku="${{ inputs.WEBAPP_SKU }}"
+            skuCode="${{ inputs.WEBAPP_SKU_CODE }}"
+            linuxFxVersion="DOCKER|${{ secrets.ACR_URL }}/samplewebapp:${{ github.run_id }}"
+            dockerRegistryUrl="${{ secrets.ACR_URL }}"
+            dockerRegistryUsername="${{ secrets.ACR_USERNAME }}"
+            dockerRegistryPassword="${{ secrets.ACR_PASSWORD }}"
+            tag_environment="${{ inputs.ENVIRONMENT }}"
+
+
+      
