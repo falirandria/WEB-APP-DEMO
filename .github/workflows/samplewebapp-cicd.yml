@@ -50,11 +50,11 @@ jobs:
       ENVIRONMENT: development
     secrets: inherit
 
-  prd:
+  prod:
     needs: dev
     uses: ./.github/workflows/reusable-web-app-container-deploy.yml
     with:
-      ENVIRONMENT_PREFIX: prd
+      ENVIRONMENT_PREFIX: prod
       SERVER_FARM_RESOURCE_GROUP_NAME: PRD-ACRCD-RG #insert the name of your own RG here
       WEBAPP_LOCATION: canadacentral #insert your desired location here
       WEBAPP_SKU: Basic
